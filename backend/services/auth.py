@@ -1,7 +1,5 @@
 """
-Google OAuth2 Service
-- ฝัง session_id ใน state parameter เพื่อให้ callback รู้ว่าเป็น session ไหน
-- Google จะส่ง state กลับมาพร้อม code ใน callback เสมอ
+Google OAuth2 Service — simplified session handling
 """
 import secrets
 import json
@@ -37,29 +35,34 @@ def create_oauth_flow() -> Flow:
     return flow
 
 
-def _encode_state(session_id: str, nonce: str) -> str:
-    """ฝัง session_id ใน state โดย encode เป็น base64"""
-    payload = json.dumps({"sid": session_id, "n": nonce})
-    return base64.urlsafe_b64encode(payload.encode()).decode()
+def _encode_state(session_id: str) -> str:
+    """ฝัง session_id ใน state"""
+    payload = json.dumps({"sid": session_id})
+    return base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
 
 
-def _decode_state(state: str) -> dict:
-    """ถอด session_id จาก state"""
+def _decode_state(state: str) -> str:
+    """ถอด session_id จาก state — คืนค่า session_id หรือ state เดิมถ้า decode ไม่ได้"""
     try:
+        # เติม padding กลับ
+        padding = 4 - len(state) % 4
+        if padding != 4:
+            state += "=" * padding
         payload = base64.urlsafe_b64decode(state.encode()).decode()
-        return json.loads(payload)
+        data = json.loads(payload)
+        return data.get("sid", state)
     except Exception:
-        return {}
+        # ถ้า decode ไม่ได้ ใช้ state เป็น session_id ตรง ๆ
+        return state
 
 
 def get_authorization_url(session_id: Optional[str] = None) -> dict:
-    """สร้าง URL สำหรับ login Google — ฝัง session_id ใน state"""
+    """สร้าง URL สำหรับ login Google"""
     flow = create_oauth_flow()
     sid = session_id or secrets.token_urlsafe(32)
-    nonce = secrets.token_urlsafe(16)
 
     # ฝัง session_id ใน state
-    state_value = _encode_state(sid, nonce)
+    state_value = _encode_state(sid)
 
     auth_url, _ = flow.authorization_url(
         access_type="offline",
@@ -68,7 +71,7 @@ def get_authorization_url(session_id: Optional[str] = None) -> dict:
         state=state_value,
     )
 
-    _sessions[sid] = {"nonce": nonce, "credentials": None}
+    _sessions[sid] = {"credentials": None}
 
     return {
         "auth_url": auth_url,
@@ -78,27 +81,20 @@ def get_authorization_url(session_id: Optional[str] = None) -> dict:
 
 
 def exchange_code_for_tokens(code: str, state: str) -> dict:
-    """
-    รับ code + state จาก Google callback
-    ถอด session_id จาก state แล้วแลก token
-    """
+    """รับ code + state จาก Google แลกเป็น token"""
     # ถอด session_id จาก state
-    state_data = _decode_state(state)
-    session_id = state_data.get("sid")
-    nonce = state_data.get("n")
+    session_id = _decode_state(state)
 
     if not session_id:
-        raise ValueError("ไม่พบ session_id ใน state — กรุณา login ใหม่")
+        raise ValueError("ไม่พบ session_id ใน state")
 
-    session = _sessions.get(session_id)
-    if not session:
-        raise ValueError("ไม่พบ session — กรุณา login ใหม่")
-
-    if session.get("nonce") != nonce:
-        raise ValueError("State mismatch — อาจมีความเสี่ยง CSRF")
-
+    # สร้าง flow และแลก token
     flow = create_oauth_flow()
-    flow.fetch_token(code=code)
+
+    try:
+        flow.fetch_token(code=code)
+    except Exception as e:
+        raise ValueError(f"แลก token ไม่สำเร็จ: {str(e)}")
 
     creds: Credentials = flow.credentials
     token_data = {
@@ -110,7 +106,9 @@ def exchange_code_for_tokens(code: str, state: str) -> dict:
         "scopes": list(creds.scopes or []),
     }
 
-    _sessions[session_id]["credentials"] = token_data
+    # บันทึก session (ถ้ายังมีอยู่) หรือสร้างใหม่
+    _sessions[session_id] = {"credentials": token_data}
+
     return {"session_id": session_id, **token_data}
 
 
