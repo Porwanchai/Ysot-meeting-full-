@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบถอดเทปการประชุม ยสท.</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f8f9fa;color:#212529;min-height:100vh}
+.topbar{background:#1B4332;color:#fff;padding:.875rem 1.5rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-size:18px;font-weight:700;letter-spacing:.5px}
+.topbar-sub{font-size:12px;opacity:.75;margin-top:2px}
+.login-badge{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px}
+.badge-dot{width:8px;height:8px;border-radius:50%;background:#4CAF50}
+.badge-dot.off{background:#EF5350}
+.main{max-width:760px;margin:0 auto;padding:1.5rem 1rem}
+.card{background:#fff;border:1px solid #e9ecef;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.card-label{font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+.source-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.src-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:1rem;border:1.5px solid #e9ecef;border-radius:8px;background:#f8f9fa;cursor:pointer;font-size:13px;color:#212529;transition:all .15s}
+.src-btn.active{border-color:#1B4332;background:#f0f7f4;color:#1B4332}
+.src-btn i{font-size:22px}
+.drive-area{display:none;margin-top:.75rem;padding:.75rem 1rem;background:#f8f9fa;border-radius:8px;border:1px solid #e9ecef}
+.drive-area.show{display:flex;align-items:center;gap:10px}
+.folder-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#1B4332;background:#e8f5e9;padding:3px 8px;border-radius:99px;margin-left:6px}
+.upload-zone{border:1.5px dashed #ced4da;border-radius:8px;padding:1.25rem;text-align:center;cursor:pointer;display:none;margin-top:.75rem;transition:background .15s}
+.upload-zone.show{display:block}
+.upload-zone:hover{background:#f8f9fa}
+.upload-zone i{font-size:28px;color:#adb5bd}
+.fi-hidden{display:none}
+.agenda-list{display:flex;flex-direction:column;gap:.5rem}
+.agenda-item{display:flex;align-items:center;gap:.5rem}
+.agenda-num{font-size:12px;color:#adb5bd;min-width:18px}
+.ainput{flex:1;padding:8px 10px;font-size:13px;border:1px solid #e9ecef;border-radius:8px;color:#212529}
+.ainput:focus{outline:none;border-color:#1B4332}
+.btn-ghost{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#1B4332;background:none;border:none;cursor:pointer;padding:4px 0;margin-top:4px}
+.email-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:38px;padding:6px 8px;border:1px solid #e9ecef;border-radius:8px;background:#fff;cursor:text;margin-bottom:.75rem;align-items:center}
+.etag{display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;color:#1B4332;border-radius:99px;padding:3px 10px;font-size:12px}
+.etag button{background:none;border:none;cursor:pointer;color:#4CAF50;font-size:14px;padding:0 0 0 2px}
+.email-input-row{display:flex;gap:.5rem}
+.email-input-row input{flex:1;padding:8px 10px;font-size:13px;border:1px solid #e9ecef;border-radius:8px;color:#212529}
+.email-input-row input:focus{outline:none;border-color:#1B4332}
+.email-input-row button{padding:8px 14px;font-size:12px;background:#1B4332;color:#fff;border:none;border-radius:8px;cursor:pointer}
+.qa-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem}
+.qa-btn{padding:4px 10px;font-size:11px;border:1px solid #e9ecef;border-radius:99px;cursor:pointer;background:#f8f9fa;color:#6c757d;transition:all .15s}
+.qa-btn:hover{border-color:#1B4332;color:#1B4332}
+.form-field{margin-bottom:.75rem}
+.form-field label{font-size:12px;color:#6c757d;display:block;margin-bottom:4px}
+.form-field input,.form-field select,.form-field textarea{width:100%;padding:8px 10px;font-size:13px;border:1px solid #e9ecef;border-radius:8px;color:#212529;background:#fff}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:#1B4332}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.attach-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+.achip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;font-size:12px;border:1px solid #e9ecef;border-radius:99px;cursor:pointer;background:#f8f9fa;color:#6c757d;transition:all .15s;user-select:none}
+.achip.active{border-color:#1B4332;background:#e8f5e9;color:#1B4332}
+.run-btn{width:100%;padding:.875rem;background:#1B4332;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:.5rem;transition:background .15s}
+.run-btn:hover{background:#145028}
+.run-btn:disabled{background:#adb5bd;cursor:not-allowed}
+.notice{font-size:12px;color:#6c757d;padding:.625rem .875rem;background:#f8f9fa;border-radius:8px;margin-top:.75rem;display:flex;align-items:flex-start;gap:6px;line-height:1.5;border:1px solid #e9ecef}
+.notice i{flex-shrink:0;font-size:14px;margin-top:1px}
+/* Progress */
+.progress-wrap{display:none;margin-top:1.5rem}
+.progress-wrap.show{display:block}
+.p-step{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;border-radius:8px;background:#f8f9fa;font-size:13px;color:#6c757d;margin-bottom:.5rem;border:1px solid #e9ecef;transition:all .2s}
+.p-step.active{background:#e8f5e9;color:#1B4332;font-weight:600;border-color:#a5d6a7}
+.p-step.done{color:#388E3C;border-color:#c8e6c9}
+i.si{font-size:16px;flex-shrink:0}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Result */
+.result-wrap{display:none;margin-top:1.5rem}
+.result-wrap.show{display:block}
+.rtabs{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
+.rtab{padding:6px 16px;font-size:13px;border:1px solid #e9ecef;border-radius:8px;cursor:pointer;background:#f8f9fa;color:#6c757d;transition:all .15s}
+.rtab.active{background:#1B4332;color:#fff;border-color:#1B4332}
+.rpanel{display:none}
+.rpanel.show{display:block}
+.tbox{background:#f8f9fa;border-radius:8px;padding:1rem;font-size:13px;line-height:1.7;max-height:300px;overflow-y:auto;border:1px solid #e9ecef}
+.sp-line{margin-bottom:.375rem}
+.sp-ts{font-size:11px;color:#adb5bd;margin-right:5px}
+.sp-name{font-size:11px;font-weight:700;color:#1B4332;margin-right:5px}
+.sbox{font-size:13px;line-height:1.8}
+.ag-title{font-size:13px;font-weight:700;color:#1B4332;margin:.75rem 0 .4rem}
+.ai-item{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:#495057;margin-bottom:3px}
+.ai-item i{font-size:13px;color:#1B4332;flex-shrink:0;margin-top:2px}
+.dl-row{display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap}
+.dl-btn{display:flex;align-items:center;gap:6px;padding:.5rem 1rem;font-size:13px;border:1px solid #e9ecef;border-radius:8px;cursor:pointer;background:#f8f9fa;color:#212529;text-decoration:none;transition:background .15s}
+.dl-btn:hover{background:#fff;border-color:#ced4da}
+.send-btn{display:flex;align-items:center;gap:6px;padding:.5rem 1.25rem;font-size:13px;border:none;border-radius:8px;cursor:pointer;background:#1B4332;color:#fff;font-weight:600}
+.send-btn:hover{background:#145028}
+.sent-ok{display:none;align-items:center;gap:6px;font-size:13px;color:#388E3C;background:#e8f5e9;padding:.5rem 1rem;border-radius:8px}
+/* File list modal */
+.file-list{display:flex;flex-direction:column;gap:.5rem;max-height:300px;overflow-y:auto;margin-top:.75rem}
+.file-item{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;border:1px solid #e9ecef;border-radius:8px;cursor:pointer;background:#fff;transition:border-color .15s}
+.file-item:hover{border-color:#1B4332;background:#f0f7f4}
+.file-item i{color:#1B4332;font-size:18px;flex-shrink:0}
+.file-item-name{flex:1;font-size:13px;font-weight:500}
+.file-item-meta{font-size:11px;color:#adb5bd}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="topbar-logo">ยสท. Meeting Transcriber</div>
+    <div class="topbar-sub">การยาสูบแห่งประเทศไทย — สำนักบริหารทรัพย์สิน</div>
+  </div>
+  <div class="login-badge" id="login-badge">
+    <div class="badge-dot off" id="badge-dot"></div>
+    <span id="badge-text">ยังไม่ได้ Login</span>
+    <button onclick="startLogin()" id="login-btn"
+      style="padding:5px 14px;font-size:12px;border:1px solid rgba(255,255,255,.4);border-radius:6px;background:transparent;color:#fff;cursor:pointer">
+      Login Google
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Step 1: ไฟล์ -->
+  <div class="card">
+    <div class="card-label">ขั้นที่ 1 — เลือกไฟล์การประชุม</div>
+    <div class="source-grid">
+      <button class="src-btn active" id="btn-drive" onclick="selectSource('drive')">
+        <i class="ti ti-brand-google-drive"></i>
+        <strong>Google Drive</strong>
+        <span>บันทึกจาก Google Meet</span>
+      </button>
+      <button class="src-btn" id="btn-upload" onclick="selectSource('upload')">
+        <i class="ti ti-upload"></i>
+        <strong>อัปโหลดจากเครื่อง</strong>
+        <span>mp4, mp3, m4a, wav</span>
+      </button>
+    </div>
+
+    <!-- Drive -->
+    <div class="drive-area show" id="drive-area">
+      <i class="ti ti-folder" style="font-size:20px;color:#1B4332;flex-shrink:0"></i>
+      <div style="flex:1">
+        <div style="font-size:12px;color:#6c757d">
+          folder อัตโนมัติ
+          <span class="folder-badge"><i class="ti ti-folder-filled" style="font-size:11px"></i> Meet Recordings</span>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="loadDriveFiles()"
+            style="padding:5px 14px;font-size:12px;border:none;border-radius:6px;background:#1B4332;color:#fff;cursor:pointer">
+            <i class="ti ti-folder-open"></i> เลือกไฟล์
+          </button>
+          <span id="drive-filename" style="font-size:12px;color:#6c757d">ยังไม่ได้เลือกไฟล์</span>
+        </div>
+        <!-- รายการไฟล์ -->
+        <div class="file-list" id="file-list" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="upload-zone" id="upload-area" onclick="document.getElementById('file-input').click()">
+      <i class="ti ti-file-music"></i>
+      <p style="margin-top:6px;font-size:13px;color:#6c757d">คลิกเพื่อเลือกไฟล์ หรือลากมาวาง</p>
+      <small style="font-size:11px;color:#adb5bd">รองรับ .mp4 .mp3 .m4a .wav ขนาดสูงสุด 500MB</small>
+      <input type="file" id="file-input" class="fi-hidden" accept=".mp4,.mp3,.m4a,.wav" onchange="handleUpload(this)">
+    </div>
+    <div class="notice" style="margin-top:.75rem">
+      <i class="ti ti-shield-lock"></i>
+      <span>ไฟล์เสียงส่งไป Whisper API เพื่อถอดเทปเท่านั้น — ไม่บันทึกถาวร ตาม Zero Data Retention policy ของ OpenAI</span>
+    </div>
+  </div>
+
+  <!-- Step 2: วาระ -->
+  <div class="card">
+    <div class="card-label">ขั้นที่ 2 — วาระการประชุม</div>
+    <div class="agenda-list" id="agenda-list">
+      <div class="agenda-item"><span class="agenda-num">1.</span><input class="ainput" id="a1" placeholder="เช่น เรื่องแจ้งให้ที่ประชุมทราบ"></div>
+      <div class="agenda-item"><span class="agenda-num">2.</span><input class="ainput" id="a2" placeholder="เช่น พิจารณาแผนงานประจำไตรมาส"></div>
+      <div class="agenda-item"><span class="agenda-num">3.</span><input class="ainput" id="a3" placeholder="เช่น เรื่องอื่น ๆ (ถ้ามี)"></div>
+    </div>
+    <button class="btn-ghost" onclick="addAgenda()"><i class="ti ti-plus"></i> เพิ่มวาระ</button>
+  </div>
+
+  <!-- Step 3: อีเมล -->
+  <div class="card">
+    <div class="card-label">ขั้นที่ 3 — ผู้รับรายงาน (อีเมล)</div>
+    <div class="qa-row">
+      <button class="qa-btn" onclick="addGroup('committee')"><i class="ti ti-users"></i> คณะกรรมการ</button>
+      <button class="qa-btn" onclick="addGroup('dept')"><i class="ti ti-building"></i> สำนักบริหารทรัพย์สิน</button>
+      <button class="qa-btn" onclick="addGroup('attendees')"><i class="ti ti-user-check"></i> ผู้เข้าร่วมประชุม</button>
+    </div>
+    <div class="email-tags" id="email-tags" onclick="document.getElementById('email-inp').focus()">
+      <span id="tag-ph" style="font-size:13px;color:#adb5bd">อีเมลจะแสดงที่นี่...</span>
+    </div>
+    <div class="email-input-row">
+      <input type="email" id="email-inp" placeholder="กรอกอีเมล แล้วกด Enter" onkeydown="emailKeydown(event)">
+      <button onclick="addEmailTag()"><i class="ti ti-plus"></i> เพิ่ม</button>
+    </div>
+    <div style="font-size:11px;color:#adb5bd;margin-top:5px">กด Enter หรือ , เพื่อเพิ่ม · วางหลายอีเมลพร้อมกันได้</div>
+
+    <hr style="border:none;border-top:1px solid #e9ecef;margin:.875rem 0">
+
+    <div class="form-field">
+      <label>หัวข้ออีเมล</label>
+      <input type="text" id="email-subject" value="รายงานการประชุม ยสท. — [วันที่]">
+    </div>
+    <div class="form-field">
+      <label>เนื้อหาอีเมล (ระบบแทรกสรุปวาระอัตโนมัติ)</label>
+      <textarea id="email-body" rows="4">เรียน ผู้เข้าร่วมการประชุมทุกท่าน
+
+ขอส่งรายงานการประชุมพร้อมสรุปมติและ action items มาเพื่อทราบและดำเนินการต่อไป
+
+[ระบบจะแทรกสรุปตามวาระที่นี่]
+
+จึงเรียนมาเพื่อโปรดทราบ
+สำนักบริหารทรัพย์สิน ยสท.</textarea>
+    </div>
+    <div style="font-size:12px;color:#6c757d;margin-bottom:.5rem">แนบไฟล์</div>
+    <div class="attach-row">
+      <div class="achip active" id="ch-pdf" onclick="toggleChip('pdf')"><i class="ti ti-file-type-pdf"></i> PDF</div>
+      <div class="achip active" id="ch-docx" onclick="toggleChip('docx')"><i class="ti ti-file-type-doc"></i> DOCX</div>
+      <div class="achip" id="ch-txt" onclick="toggleChip('txt')"><i class="ti ti-file-text"></i> Transcript</div>
+    </div>
+    <div class="two-col" style="margin-top:.75rem">
+      <div class="form-field" style="margin:0">
+        <label>เวลาส่งอีเมล</label>
+        <select id="email-timing">
+          <option value="auto">ส่งอัตโนมัติหลังประมวลผลเสร็จ</option>
+          <option value="manual">ส่งเองด้วยตนเอง</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: ตั้งค่า -->
+  <div class="card">
+    <div class="card-label">ขั้นที่ 4 — ตั้งค่าการประชุม</div>
+    <div class="two-col">
+      <div class="form-field">
+        <label>ชื่อการประชุม</label>
+        <input type="text" id="meeting-title" value="การประชุม ยสท.">
+      </div>
+      <div class="form-field">
+        <label>วันที่ประชุม</label>
+        <input type="date" id="meeting-date">
+      </div>
+      <div class="form-field">
+        <label>สถานที่</label>
+        <input type="text" id="meeting-loc" value="ห้องประชุม ยสท.">
+      </div>
+      <div class="form-field">
+        <label>ภาษาหลัก</label>
+        <select id="lang">
+          <option value="th">ไทย</option>
+          <option value="th-en">ไทย + อังกฤษ</option>
+          <option value="en">อังกฤษ</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="run-btn" id="run-btn" onclick="startProcessing()">
+    <i class="ti ti-player-play"></i>
+    เริ่มถอดเทป สรุป และส่งอีเมล
+  </button>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progress-wrap">
+    <div id="ps1" class="p-step"><i class="ti ti-circle si"></i><span>ดึงไฟล์จาก Google Drive</span></div>
+    <div id="ps2" class="p-step"><i class="ti ti-circle si"></i><span>แปลงและบีบอัดเสียง</span></div>
+    <div id="ps3" class="p-step"><i class="ti ti-circle si"></i><span>ถอดเทปด้วย Whisper API</span></div>
+    <div id="ps4" class="p-step"><i class="ti ti-circle si"></i><span>วิเคราะห์และสรุปตามวาระด้วย Claude</span></div>
+    <div id="ps5" class="p-step"><i class="ti ti-circle si"></i><span>สร้างรายงาน PDF / DOCX</span></div>
+    <div id="ps6" class="p-step"><i class="ti ti-circle si"></i><span>ส่งอีเมลถึงผู้เข้าร่วมประชุม</span></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-wrap" id="result-wrap">
+    <div class="rtabs">
+      <button class="rtab active" onclick="showTab('transcript')">Transcript</button>
+      <button class="rtab" onclick="showTab('summary')">สรุปตามวาระ</button>
+      <button class="rtab" onclick="showTab('email')">อีเมลที่ส่ง</button>
+    </div>
+
+    <div class="rpanel show" id="tab-transcript">
+      <div class="tbox" id="transcript-box"></div>
+    </div>
+    <div class="rpanel" id="tab-summary">
+      <div class="sbox" id="summary-box"></div>
+    </div>
+    <div class="rpanel" id="tab-email">
+      <div style="background:#f8f9fa;border-radius:8px;padding:1rem;font-size:13px;line-height:1.7;border:1px solid #e9ecef">
+        <div style="margin-bottom:.75rem">
+          <span style="font-size:12px;color:#6c757d">ถึง: </span>
+          <span id="email-to-preview"></span>
+        </div>
+        <div style="margin-bottom:.5rem">
+          <span style="font-size:12px;color:#6c757d">หัวข้อ: </span>
+          <strong id="email-subj-preview"></strong>
+        </div>
+        <hr style="border:none;border-top:1px solid #e9ecef;margin:.75rem 0">
+        <div id="email-body-preview" style="white-space:pre-wrap"></div>
+      </div>
+      <div class="dl-row">
+        <div class="sent-ok" id="sent-ok"><i class="ti ti-circle-check" style="color:#388E3C"></i> ส่งอีเมลสำเร็จแล้ว</div>
+        <button class="send-btn" id="send-now-btn" onclick="sendEmailNow()">
+          <i class="ti ti-send"></i> ส่งอีเมลตอนนี้
+        </button>
+      </div>
+    </div>
+
+    <div class="dl-row" id="dl-row"></div>
+  </div>
+
+</div>
+
+<script>
+// ===================== CONFIG =====================
+// Backend URL — อ่านจาก meta tag หรือ window ที่ inject ตอน serve
+const API_BASE = window.BACKEND_URL || '';
+
+// ===================== STATE =====================
+let SESSION_ID = localStorage.getItem('ysot_session') || null;
+let currentSource = 'drive';
+let selectedFileId = null;
+let selectedFileName = null;
+let currentJobId = null;
+let emails = [];
+let attachPDF = true, attachDOCX = true, attachTXT = false;
+let agendaCount = 3;
+let pollTimer = null;
+
+const groupEmails = {
+  committee: ['director@thaitobacco.or.th','board1@thaitobacco.or.th','board2@thaitobacco.or.th'],
+  dept: ['asset@thaitobacco.or.th','property@thaitobacco.or.th'],
+  attendees: ['attendee1@thaitobacco.or.th','attendee2@thaitobacco.or.th'],
+};
+
+// ===================== AUTH =====================
+async function checkAuth() {
+  if (!SESSION_ID) { setLoginUI(false); return; }
+  try {
+    const r = await fetch(`${API_BASE}/auth/status?session_id=${SESSION_ID}`);
+    const d = await r.json();
+    setLoginUI(d.authenticated);
+  } catch { setLoginUI(false); }
+}
+
+function setLoginUI(loggedIn) {
+  document.getElementById('badge-dot').className = 'badge-dot' + (loggedIn ? '' : ' off');
+  document.getElementById('badge-text').textContent = loggedIn ? 'Login แล้ว' : 'ยังไม่ได้ Login';
+  document.getElementById('login-btn').textContent = loggedIn ? 'Logout' : 'Login Google';
+  document.getElementById('login-btn').onclick = loggedIn ? doLogout : startLogin;
+}
+
+async function startLogin() {
+  if (!SESSION_ID) SESSION_ID = crypto.randomUUID();
+  localStorage.setItem('ysot_session', SESSION_ID);
+  const r = await fetch(`${API_BASE}/auth/login?session_id=${SESSION_ID}`);
+  const d = await r.json();
+  window.open(d.auth_url, '_blank', 'width=500,height=600');
+  // poll สถานะ login ทุก 2 วินาที
+  const iv = setInterval(async () => {
+    const s = await fetch(`${API_BASE}/auth/status?session_id=${SESSION_ID}`);
+    const sd = await s.json();
+    if (sd.authenticated) { clearInterval(iv); setLoginUI(true); }
+  }, 2000);
+}
+
+async function doLogout() {
+  if (SESSION_ID) await fetch(`${API_BASE}/auth/logout?session_id=${SESSION_ID}`, { method: 'POST' });
+  SESSION_ID = null;
+  localStorage.removeItem('ysot_session');
+  setLoginUI(false);
+}
+
+// ===================== SOURCE =====================
+function selectSource(s) {
+  currentSource = s;
+  document.getElementById('btn-drive').classList.toggle('active', s === 'drive');
+  document.getElementById('btn-upload').classList.toggle('active', s === 'upload');
+  document.getElementById('drive-area').classList.toggle('show', s === 'drive');
+  document.getElementById('upload-area').classList.toggle('show', s === 'upload');
+}
+
+// ===================== DRIVE =====================
+async function loadDriveFiles() {
+  if (!SESSION_ID) { alert('กรุณา Login Google ก่อน'); return; }
+  const list = document.getElementById('file-list');
+  list.style.display = 'flex';
+  list.innerHTML = '<div style="font-size:13px;color:#6c757d;padding:.5rem">กำลังโหลด...</div>';
+  try {
+    const r = await fetch(`${API_BASE}/drive/files?session_id=${SESSION_ID}`);
+    const d = await r.json();
+    if (!d.files || !d.files.length) {
+      list.innerHTML = '<div style="font-size:13px;color:#adb5bd;padding:.5rem">ไม่พบไฟล์การประชุม</div>';
+      return;
+    }
+    list.innerHTML = d.files.map(f => `
+      <div class="file-item" onclick="selectDriveFile('${f.id}','${f.name.replace(/'/g,"\\'")}')">
+        <i class="ti ti-file-music"></i>
+        <div>
+          <div class="file-item-name">${f.name}</div>
+          <div class="file-item-meta">${f.size_mb} MB · ${f.created_display}</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="font-size:13px;color:#dc3545;padding:.5rem">เกิดข้อผิดพลาด: ${e.message}</div>`;
+  }
+}
+
+function selectDriveFile(id, name) {
+  selectedFileId = id;
+  selectedFileName = name;
+  document.getElementById('drive-filename').innerHTML =
+    `<strong style="color:#1B4332">${name}</strong>`;
+  document.getElementById('file-list').style.display = 'none';
+  // อัปเดต email subject
+  const d = document.getElementById('meeting-date').value;
+  if (d) document.getElementById('email-subject').value = `รายงานการประชุม ยสท. — ${d}`;
+}
+
+function handleUpload(input) {
+  if (input.files && input.files[0]) {
+    const f = input.files[0];
+    selectedFileName = f.name;
+    document.getElementById('upload-area').innerHTML =
+      `<i class="ti ti-circle-check" style="font-size:28px;color:#4CAF50"></i>
+       <p style="color:#1B4332;font-weight:600;margin-top:6px">${f.name}</p>
+       <small>${(f.size/1024/1024).toFixed(1)} MB</small>`;
+  }
+}
+
+// ===================== AGENDA =====================
+function addAgenda() {
+  agendaCount++;
+  const list = document.getElementById('agenda-list');
+  const d = document.createElement('div');
+  d.className = 'agenda-item';
+  d.innerHTML = `<span class="agenda-num">${agendaCount}.</span>
+    <input class="ainput" id="a${agendaCount}" placeholder="วาระที่ ${agendaCount}">`;
+  list.appendChild(d);
+}
+
+function getAgendaItems() {
+  const items = [];
+  for (let i = 1; i <= agendaCount; i++) {
+    const el = document.getElementById('a' + i);
+    if (el && el.value.trim()) items.push(el.value.trim());
+  }
+  return items;
+}
+
+// ===================== EMAIL =====================
+function addGroup(g) { groupEmails[g].forEach(e => addEmail(e)); }
+
+function addEmail(e) {
+  const v = e.trim().toLowerCase();
+  if (!v || !v.includes('@') || emails.includes(v)) return;
+  emails.push(v);
+  renderTags();
+}
+
+function removeEmail(i) { emails.splice(i, 1); renderTags(); }
+
+function renderTags() {
+  const box = document.getElementById('email-tags');
+  box.querySelectorAll('.etag').forEach(e => e.remove());
+  document.getElementById('tag-ph').style.display = emails.length ? 'none' : 'inline';
+  emails.forEach((e, i) => {
+    const s = document.createElement('span');
+    s.className = 'etag';
+    s.innerHTML = `${e}<button onclick="removeEmail(${i})">×</button>`;
+    box.insertBefore(s, box.lastElementChild);
+  });
+}
+
+function emailKeydown(ev) {
+  if (ev.key === 'Enter' || ev.key === ',') { ev.preventDefault(); addEmailTag(); }
+}
+
+function addEmailTag() {
+  const inp = document.getElementById('email-inp');
+  inp.value.replace(/,/g,' ').trim().split(/\s+/).forEach(e => addEmail(e));
+  inp.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('email-inp').addEventListener('paste', e => {
+    e.preventDefault();
+    e.clipboardData.getData('text').split(/[\s,;\n]+/).forEach(e => addEmail(e));
+  });
+});
+
+function toggleChip(t) {
+  document.getElementById('ch-' + t).classList.toggle('active');
+  if (t === 'pdf') attachPDF = document.getElementById('ch-pdf').classList.contains('active');
+  if (t === 'docx') attachDOCX = document.getElementById('ch-docx').classList.contains('active');
+  if (t === 'txt') attachTXT = document.getElementById('ch-txt').classList.contains('active');
+}
+
+// ===================== PROCESS =====================
+function setStep(n, state) {
+  const el = document.getElementById('ps' + n);
+  const ic = el.querySelector('i.si');
+  el.className = 'p-step ' + state;
+  ic.className = state === 'active' ? 'ti ti-loader-2 si spin'
+               : state === 'done'   ? 'ti ti-circle-check si'
+               : 'ti ti-circle si';
+}
+
+async function startProcessing() {
+  if (!SESSION_ID) { alert('กรุณา Login Google ก่อน'); return; }
+
+  const agenda = getAgendaItems();
+  if (!agenda.length) { alert('กรุณาระบุวาระการประชุมอย่างน้อย 1 วาระ'); return; }
+
+  if (currentSource === 'drive' && !selectedFileId) {
+    alert('กรุณาเลือกไฟล์จาก Google Drive ก่อน'); return;
+  }
+  if (currentSource === 'upload') {
+    const fi = document.getElementById('file-input');
+    if (!fi.files || !fi.files[0]) { alert('กรุณาเลือกไฟล์ก่อน'); return; }
+  }
+
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('progress-wrap').classList.add('show');
+  document.getElementById('result-wrap').classList.remove('show');
+  [1,2,3,4,5,6].forEach(n => setStep(n, ''));
+
+  const body = {
+    session_id: SESSION_ID,
+    agenda_items: agenda,
+    meeting_title: document.getElementById('meeting-title').value,
+    meeting_date: document.getElementById('meeting-date').value,
+    meeting_location: document.getElementById('meeting-loc').value,
+    language: document.getElementById('lang').value,
+    output_formats: ['pdf','docx'],
+  };
+
+  try {
+    let jobResp;
+    if (currentSource === 'drive') {
+      setStep(1, 'active');
+      const r = await fetch(`${API_BASE}/process/from-drive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, file_id: selectedFileId }),
+      });
+      jobResp = await r.json();
+    } else {
+      setStep(1, 'done');
+      const fd = new FormData();
+      fd.append('file', document.getElementById('file-input').files[0]);
+      fd.append('session_id', SESSION_ID);
+      fd.append('agenda_items', JSON.stringify(agenda));
+      fd.append('meeting_title', body.meeting_title);
+      fd.append('meeting_date', body.meeting_date);
+      fd.append('meeting_location', body.meeting_location);
+      fd.append('language', body.language);
+      fd.append('output_formats', JSON.stringify(['pdf','docx']));
+      const r = await fetch(`${API_BASE}/process/from-upload`, { method: 'POST', body: fd });
+      jobResp = await r.json();
+    }
+
+    currentJobId = jobResp.job_id;
+    pollJobStatus(currentJobId, body);
+
+  } catch(e) {
+    alert('เกิดข้อผิดพลาด: ' + e.message);
+    document.getElementById('run-btn').disabled = false;
+  }
+}
+
+function pollJobStatus(jobId, reqBody) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/process/status/${jobId}`);
+      const d = await r.json();
+
+      // อัปเดต step icons ตาม backend steps
+      const stepMap = { download:1, transcribe:[2,3], summarize:4, report:5 };
+      if (d.steps) {
+        updateStepsFromBackend(d.steps);
+      }
+
+      if (d.status === 'completed') {
+        clearInterval(pollTimer);
+        setStep(5, 'done');
+
+        // ส่งอีเมลอัตโนมัติ (ถ้าเลือกไว้)
+        const timing = document.getElementById('email-timing').value;
+        if (timing === 'auto' && emails.length) {
+          setStep(6, 'active');
+          await sendEmailWithJobData(d);
+          setStep(6, 'done');
+        } else {
+          setStep(6, 'done');
+        }
+
+        showResults(d, reqBody);
+        document.getElementById('run-btn').disabled = false;
+      } else if (d.status === 'error') {
+        clearInterval(pollTimer);
+        alert('เกิดข้อผิดพลาด: ' + d.error);
+        document.getElementById('run-btn').disabled = false;
+      }
+    } catch(e) { console.error(e); }
+  }, 3000);
+}
+
+function updateStepsFromBackend(steps) {
+  const map = { download:1, transcribe:[2,3], summarize:4, report:5 };
+  Object.entries(steps).forEach(([key, state]) => {
+    const ns = map[key];
+    if (!ns) return;
+    if (Array.isArray(ns)) ns.forEach(n => setStep(n, state === 'done' ? 'done' : state === 'active' ? 'active' : ''));
+    else setStep(ns, state === 'done' ? 'done' : state === 'active' ? 'active' : '');
+  });
+}
+
+async function sendEmailWithJobData(jobData) {
+  const body = document.getElementById('email-body').value
+    .replace('[ระบบจะแทรกสรุปตามวาระที่นี่]', '\n' + (jobData.summary?.full_summary || '') + '\n');
+  try {
+    await fetch(`${API_BASE}/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: SESSION_ID,
+        job_id: currentJobId,
+        to_emails: emails,
+        subject: document.getElementById('email-subject').value,
+        body: body,
+        attach_pdf: attachPDF,
+        attach_docx: attachDOCX,
+        attach_transcript: attachTXT,
+      }),
+    });
+    document.getElementById('sent-ok').style.display = 'flex';
+  } catch(e) { console.error('Email error:', e); }
+}
+
+async function sendEmailNow() {
+  if (!emails.length) { alert('กรุณาเพิ่มอีเมลผู้รับก่อน'); return; }
+  setStep(6, 'active');
+  const r = await fetch(`${API_BASE}/process/status/${currentJobId}`);
+  const d = await r.json();
+  await sendEmailWithJobData(d);
+  setStep(6, 'done');
+}
+
+function showResults(data, reqBody) {
+  // Transcript
+  const segs = data.transcript || '';
+  document.getElementById('transcript-box').innerHTML = segs.split('\n').map(l => {
+    const m = l.match(/\[(\d+:\d+)\] (.*)/);
+    if (m) return `<div class="sp-line"><span class="sp-ts">${m[1]}</span>${m[2]}</div>`;
+    return `<div class="sp-line">${l}</div>`;
+  }).join('');
+
+  // Summary
+  const summary = data.summary?.full_summary || '';
+  document.getElementById('summary-box').innerHTML = summary.split('\n').filter(l=>l.trim()).map(l => {
+    if (l.match(/^##/)) return `<div class="ag-title">${l.replace(/^#+\s*/,'')}</div>`;
+    if (l.match(/^\*\*/) && l.match(/\*\*$/)) return `<div style="font-weight:600;margin:.375rem 0">${l.replace(/\*\*/g,'')}</div>`;
+    if (l.match(/^[-•]/)) return `<div class="ai-item"><i class="ti ti-arrow-right"></i><span>${l.replace(/^[-•]\s*/,'')}</span></div>`;
+    if (l === '---') return '<hr style="border:none;border-top:1px solid #e9ecef;margin:.5rem 0">';
+    return `<div style="margin-bottom:.25rem">${l}</div>`;
+  }).join('');
+
+  // Email preview
+  document.getElementById('email-to-preview').innerHTML = emails
+    .map(e => `<span style="background:#e8f5e9;color:#1B4332;border-radius:99px;padding:2px 8px;font-size:11px;margin:2px">${e}</span>`)
+    .join('');
+  document.getElementById('email-subj-preview').textContent = document.getElementById('email-subject').value;
+  document.getElementById('email-body-preview').textContent = document.getElementById('email-body').value
+    .replace('[ระบบจะแทรกสรุปตามวาระที่นี่]', '\n' + (data.summary?.full_summary || '') + '\n');
+
+  // Download buttons
+  const dlRow = document.getElementById('dl-row');
+  dlRow.innerHTML = '';
+  if (data.output_urls?.pdf) {
+    const a = document.createElement('a');
+    a.href = API_BASE + data.output_urls.pdf;
+    a.className = 'dl-btn';
+    a.innerHTML = '<i class="ti ti-file-type-pdf"></i> ดาวน์โหลด PDF';
+    a.download = 'รายงานการประชุม.pdf';
+    dlRow.appendChild(a);
+  }
+  if (data.output_urls?.docx) {
+    const a = document.createElement('a');
+    a.href = API_BASE + data.output_urls.docx;
+    a.className = 'dl-btn';
+    a.innerHTML = '<i class="ti ti-file-type-doc"></i> ดาวน์โหลด DOCX';
+    a.download = 'รายงานการประชุม.docx';
+    dlRow.appendChild(a);
+  }
+
+  document.getElementById('result-wrap').classList.add('show');
+}
+
+function showTab(t) {
+  ['transcript','summary','email'].forEach((name, i) => {
+    document.querySelectorAll('.rtab')[i].classList.toggle('active', name === t);
+    document.getElementById('tab-' + name).classList.toggle('show', name === t);
+  });
+}
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
+  selectSource('drive');
+  // ตั้งวันที่วันนี้
+  document.getElementById('meeting-date').value = new Date().toISOString().split('T')[0];
+});
+</script>
+</body>
+</html>
