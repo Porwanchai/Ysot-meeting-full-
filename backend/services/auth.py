@@ -92,6 +92,8 @@ def exchange_code_for_tokens(code: str, state: str) -> dict:
     flow = create_oauth_flow()
 
     try:
+        import os
+        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
         flow.fetch_token(code=code)
     except Exception as e:
         raise ValueError(f"แลก token ไม่สำเร็จ: {str(e)}")
