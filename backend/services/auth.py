@@ -1,10 +1,15 @@
 """
 Google OAuth2 Service — simplified session handling
 """
+import os
 import secrets
 import json
 import base64
 from typing import Optional
+
+# ต้องตั้งก่อน import google-auth library
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "0"
 
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -92,8 +97,6 @@ def exchange_code_for_tokens(code: str, state: str) -> dict:
     flow = create_oauth_flow()
 
     try:
-        import os
-        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
         flow.fetch_token(code=code)
     except Exception as e:
         raise ValueError(f"แลก token ไม่สำเร็จ: {str(e)}")
