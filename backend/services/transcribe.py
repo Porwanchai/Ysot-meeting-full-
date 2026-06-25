@@ -1,34 +1,27 @@
 """
-Transcription Service (OpenAI Whisper)
-- ตัดไฟล์เสียงเป็น chunk ถ้าใหญ่เกิน 25MB
-- ถอดเทปพร้อม timestamp และแยกภาษา
+Transcription Service
+- รองรับทั้ง OpenAI Whisper และ Groq Whisper
+- ตัดไฟล์เสียงเป็น chunk ถ้าใหญ่เกิน limit
 - รวม chunk กลับเป็น transcript เดียว
 """
 import os
 import math
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import Optional
-
-from openai import OpenAI
 
 from config import get_settings, WHISPER_MAX_MB, WHISPER_MODEL
 
 settings = get_settings()
 
+# Groq limit อยู่ที่ 25MB เหมือนกัน
+GROQ_MAX_MB = 24
+
 
 def _get_audio_duration(filepath: str) -> float:
-    """ดึงความยาวเสียงด้วย ffprobe (วินาที)"""
     result = subprocess.run(
-        [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            filepath,
-        ],
-        capture_output=True,
-        text=True,
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", filepath],
+        capture_output=True, text=True,
     )
     try:
         return float(result.stdout.strip())
@@ -37,57 +30,33 @@ def _get_audio_duration(filepath: str) -> float:
 
 
 def _extract_audio(input_path: str, output_path: str) -> str:
-    """แปลงวิดีโอเป็นเสียง mp3 ด้วย ffmpeg"""
     subprocess.run(
-        [
-            "ffmpeg", "-y", "-i", input_path,
-            "-vn",                   # ไม่เอาวิดีโอ
-            "-ar", "16000",          # 16kHz เหมาะกับ Whisper
-            "-ac", "1",              # mono
-            "-b:a", "64k",           # bitrate ต่ำเพื่อลด size
-            output_path,
-        ],
-        check=True,
-        capture_output=True,
+        ["ffmpeg", "-y", "-i", input_path,
+         "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", output_path],
+        check=True, capture_output=True,
     )
     return output_path
 
 
-def _split_audio(audio_path: str, chunk_duration_sec: int, tmp_dir: str) -> list[str]:
-    """ตัดไฟล์เสียงเป็น chunks"""
+def _split_audio(audio_path: str, chunk_sec: int, tmp_dir: str) -> list[str]:
     duration = _get_audio_duration(audio_path)
-    num_chunks = math.ceil(duration / chunk_duration_sec)
-    chunk_paths = []
-
+    num_chunks = math.ceil(duration / chunk_sec)
+    chunks = []
     for i in range(num_chunks):
-        start = i * chunk_duration_sec
         out = os.path.join(tmp_dir, f"chunk_{i:03d}.mp3")
         subprocess.run(
-            [
-                "ffmpeg", "-y", "-i", audio_path,
-                "-ss", str(start),
-                "-t", str(chunk_duration_sec),
-                "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k",
-                out,
-            ],
-            check=True,
-            capture_output=True,
+            ["ffmpeg", "-y", "-i", audio_path,
+             "-ss", str(i * chunk_sec), "-t", str(chunk_sec),
+             "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", out],
+            check=True, capture_output=True,
         )
-        chunk_paths.append(out)
+        chunks.append(out)
+    return chunks
 
-    return chunk_paths
 
-
-def _whisper_transcribe_file(
-    client: OpenAI,
-    audio_path: str,
-    language: str,
-    time_offset_sec: float = 0.0,
-) -> list[dict]:
-    """
-    ส่งไฟล์หนึ่งไป Whisper แล้วคืน list ของ segments
-    แต่ละ segment: {start, end, text}
-    """
+def _transcribe_with_openai(audio_path: str, language: str, offset: float = 0.0) -> list[dict]:
+    from openai import OpenAI
+    client = OpenAI(api_key=settings.openai_api_key)
     with open(audio_path, "rb") as f:
         response = client.audio.transcriptions.create(
             model=WHISPER_MODEL,
@@ -96,13 +65,31 @@ def _whisper_transcribe_file(
             response_format="verbose_json",
             timestamp_granularities=["segment"],
         )
+    return [
+        {"start": round(s.start + offset, 1),
+         "end": round(s.end + offset, 1),
+         "text": s.text.strip()}
+        for s in (response.segments or [])
+    ]
 
+
+def _transcribe_with_groq(audio_path: str, language: str, offset: float = 0.0) -> list[dict]:
+    from groq import Groq
+    client = Groq(api_key=settings.groq_api_key)
+    with open(audio_path, "rb") as f:
+        response = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=f,
+            language=language if language != "th-en" else "th",
+            response_format="verbose_json",
+            timestamp_granularities=["segment"],
+        )
     segments = []
-    for seg in (response.segments or []):
+    for s in (response.segments or []):
         segments.append({
-            "start": round(seg.start + time_offset_sec, 1),
-            "end": round(seg.end + time_offset_sec, 1),
-            "text": seg.text.strip(),
+            "start": round(s.start + offset, 1),
+            "end": round(s.end + offset, 1),
+            "text": s.text.strip(),
         })
     return segments
 
@@ -110,64 +97,53 @@ def _whisper_transcribe_file(
 def transcribe_audio(
     file_path: str,
     language: str = "th",
-    openai_api_key: Optional[str] = None,
+    openai_api_key: str | None = None,
 ) -> dict:
     """
-    Main function: ถอดเทปไฟล์เสียง/วิดีโอ
-    คืนค่า: {segments, full_text, duration}
+    ถอดเทปไฟล์เสียง/วิดีโอ
+    เลือก provider จาก WHISPER_PROVIDER env var (openai หรือ groq)
     """
-    api_key = openai_api_key or settings.openai_api_key
-    client = OpenAI(api_key=api_key)
+    provider = os.environ.get("WHISPER_PROVIDER", "openai").lower()
 
     with tempfile.TemporaryDirectory() as tmp_dir:
-        # 1. แปลงเป็น mp3 ก่อนเสมอ (รองรับ mp4, m4a, wav ฯลฯ)
+        # แปลงเป็น mp3
         audio_path = os.path.join(tmp_dir, "audio.mp3")
         _extract_audio(file_path, audio_path)
 
-        # 2. ตรวจ size — ถ้าใหญ่เกิน threshold ให้ตัด chunk
-        file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
         duration_total = _get_audio_duration(audio_path)
+        file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
 
-        # คำนวณ chunk duration จาก bitrate 64kbps
-        # 64kbps = 8KB/s → 24MB ≈ 3000 วินาที (50 นาที)
-        chunk_duration = int(WHISPER_MAX_MB * 1024 * 1024 / (64 * 1024 / 8))
+        # chunk duration ~50 นาที ที่ 64kbps
+        chunk_sec = int(24 * 1024 * 1024 / (64 * 1024 / 8))
 
-        all_segments: list[dict] = []
+        def transcribe_file(path, offset=0.0):
+            if provider == "groq":
+                return _transcribe_with_groq(path, language, offset)
+            else:
+                return _transcribe_with_openai(path, language, offset)
 
-        if file_size_mb <= WHISPER_MAX_MB:
-            # ไฟล์เล็ก ส่งตรง
-            all_segments = _whisper_transcribe_file(client, audio_path, language)
+        all_segments = []
+        if file_size_mb <= 24:
+            all_segments = transcribe_file(audio_path)
         else:
-            # ไฟล์ใหญ่ ตัด chunk
-            chunk_paths = _split_audio(audio_path, chunk_duration, tmp_dir)
-            for i, chunk_path in enumerate(chunk_paths):
-                offset = i * chunk_duration
-                segs = _whisper_transcribe_file(client, chunk_path, language, offset)
-                all_segments.extend(segs)
-
-        # 3. รวมเป็น full text
-        full_text = " ".join(seg["text"] for seg in all_segments)
+            for i, chunk in enumerate(_split_audio(audio_path, chunk_sec, tmp_dir)):
+                all_segments.extend(transcribe_file(chunk, i * chunk_sec))
 
         return {
             "segments": all_segments,
-            "full_text": full_text,
+            "full_text": " ".join(s["text"] for s in all_segments),
             "duration_sec": round(duration_total, 1),
             "language": language,
+            "provider": provider,
         }
 
 
 def format_transcript_text(segments: list[dict], with_timestamp: bool = True) -> str:
-    """
-    จัดรูปแบบ transcript สำหรับแสดงผลและส่งให้ Claude
-    รูปแบบ: [MM:SS] ข้อความ
-    """
     lines = []
     for seg in segments:
         if with_timestamp:
-            minutes = int(seg["start"] // 60)
-            seconds = int(seg["start"] % 60)
-            ts = f"[{minutes:02d}:{seconds:02d}]"
-            lines.append(f"{ts} {seg['text']}")
+            m, s = int(seg["start"] // 60), int(seg["start"] % 60)
+            lines.append(f"[{m:02d}:{s:02d}] {seg['text']}")
         else:
             lines.append(seg["text"])
     return "\n".join(lines)

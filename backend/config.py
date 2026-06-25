@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    groq_api_key: str = ""  # สำหรับ Groq Whisper (ฟรี)
 
     # Google OAuth
     google_client_id: str = ""
