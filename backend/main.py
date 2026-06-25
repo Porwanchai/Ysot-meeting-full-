@@ -26,7 +26,7 @@ from fastapi import (
     BackgroundTasks, Request, Response
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -105,7 +105,6 @@ def auth_callback(code: str, state: str, response: Response):
         result = exchange_code_for_tokens(code, state)
         sid = result.get("session_id", "")
         # redirect กลับ frontend พร้อม session_id
-        from fastapi.responses import RedirectResponse
         frontend_url = os.environ.get("FRONTEND_URL", "")
         if frontend_url:
             return RedirectResponse(f"{frontend_url}?session_id={sid}&auth=success")

@@ -21,14 +21,17 @@ class Settings(BaseSettings):
     sender_email: str = ""
     sender_name: str = "ระบบการประชุม ยสท."
 
+    # Frontend URL (สำหรับ redirect หลัง OAuth)
+    frontend_url: str = ""
+
     # Server — Railway inject PORT เป็น env var อัตโนมัติ
     host: str = "0.0.0.0"
-    port: int = int(os.environ.get("PORT", 8000))
+    port: int = 8000
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        extra = "ignore"  # ignore unknown env vars จาก Railway
+        extra = "ignore"
 
 
 @lru_cache()
