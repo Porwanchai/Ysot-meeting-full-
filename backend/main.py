@@ -99,12 +99,17 @@ def auth_login(session_id: Optional[str] = None):
 
 
 @app.get("/auth/callback")
-def auth_callback(code: str, state: str, session_id: str, response: Response):
-    """รับ callback จาก Google หลัง user login"""
+def auth_callback(code: str, state: str, response: Response):
+    """รับ callback จาก Google — ถอด session_id จาก state อัตโนมัติ"""
     try:
-        tokens = exchange_code_for_tokens(code, state, session_id)
-        # redirect กลับ frontend
-        return JSONResponse({"success": True, "session_id": session_id})
+        result = exchange_code_for_tokens(code, state)
+        sid = result.get("session_id", "")
+        # redirect กลับ frontend พร้อม session_id
+        from fastapi.responses import RedirectResponse
+        frontend_url = os.environ.get("FRONTEND_URL", "")
+        if frontend_url:
+            return RedirectResponse(f"{frontend_url}?session_id={sid}&auth=success")
+        return JSONResponse({"success": True, "session_id": sid})
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

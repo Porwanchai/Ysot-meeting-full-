@@ -355,13 +355,30 @@ async function startLogin() {
   localStorage.setItem('ysot_session', SESSION_ID);
   const r = await fetch(`${API_BASE}/auth/login?session_id=${SESSION_ID}`);
   const d = await r.json();
-  window.open(d.auth_url, '_blank', 'width=500,height=600');
-  // poll สถานะ login ทุก 2 วินาที
+  // เปิด popup — Google จะ redirect กลับมาที่ /auth/callback
+  const popup = window.open(d.auth_url, 'google_login', 'width=520,height=620');
+  // poll ทุก 2 วินาที
   const iv = setInterval(async () => {
-    const s = await fetch(`${API_BASE}/auth/status?session_id=${SESSION_ID}`);
-    const sd = await s.json();
-    if (sd.authenticated) { clearInterval(iv); setLoginUI(true); }
+    try {
+      const s = await fetch(`${API_BASE}/auth/status?session_id=${SESSION_ID}`);
+      const sd = await s.json();
+      if (sd.authenticated) { clearInterval(iv); setLoginUI(true); if(popup) popup.close(); }
+    } catch(e) {}
   }, 2000);
+}
+
+function handleAuthCallback() {
+  // รับ session_id จาก URL ถ้า redirect กลับมาจาก Google
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('session_id');
+  const auth = params.get('auth');
+  if (sid && auth === 'success') {
+    SESSION_ID = sid;
+    localStorage.setItem('ysot_session', SESSION_ID);
+    setLoginUI(true);
+    // ลบ query string ออกจาก URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 }
 
 async function doLogout() {
@@ -707,6 +724,7 @@ function showTab(t) {
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
+  handleAuthCallback();
   checkAuth();
   selectSource('drive');
   // ตั้งวันที่วันนี้
