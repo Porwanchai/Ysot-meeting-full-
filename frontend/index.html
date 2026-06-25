@@ -61,9 +61,22 @@ body{font-family:'Sarabun',sans-serif;background:#f8f9fa;color:#212529;min-heigh
 /* Progress */
 .progress-wrap{display:none;margin-top:1.5rem}
 .progress-wrap.show{display:block}
-.p-step{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;border-radius:8px;background:#f8f9fa;font-size:13px;color:#6c757d;margin-bottom:.5rem;border:1px solid #e9ecef;transition:all .2s}
+.progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.progress-title{font-size:13px;font-weight:600;color:#1B4332}
+.progress-pct{font-size:20px;font-weight:700;color:#1B4332}
+.progress-bar-wrap{background:#e9ecef;border-radius:99px;height:8px;margin-bottom:1rem;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#1B4332,#4CAF50);border-radius:99px;transition:width .5s ease;width:0%}
+.p-step{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;border-radius:8px;background:#f8f9fa;font-size:13px;color:#6c757d;margin-bottom:.5rem;border:1px solid #e9ecef;transition:all .3s}
 .p-step.active{background:#e8f5e9;color:#1B4332;font-weight:600;border-color:#a5d6a7}
-.p-step.done{color:#388E3C;border-color:#c8e6c9}
+.p-step.done{background:#f1f8e9;color:#388E3C;border-color:#c8e6c9}
+.p-step-right{margin-left:auto;font-size:12px;font-weight:600}
+.p-step.active .p-step-right{color:#1B4332}
+.p-step.done .p-step-right{color:#388E3C}
+.p-step-bar{height:3px;background:#e9ecef;border-radius:99px;margin-top:4px;overflow:hidden;display:none}
+.p-step.active .p-step-bar,.p-step.done .p-step-bar{display:block}
+.p-step-bar-fill{height:100%;background:#1B4332;border-radius:99px;transition:width .4s ease}
+.p-step.done .p-step-bar-fill{background:#4CAF50;width:100%!important}
+.p-step-inner{flex:1}
 i.si{font-size:16px;flex-shrink:0}
 .spin{animation:spin .8s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -265,12 +278,73 @@ i.si{font-size:16px;flex-shrink:0}
 
   <!-- Progress -->
   <div class="progress-wrap" id="progress-wrap">
-    <div id="ps1" class="p-step"><i class="ti ti-circle si"></i><span>ดึงไฟล์จาก Google Drive</span></div>
-    <div id="ps2" class="p-step"><i class="ti ti-circle si"></i><span>แปลงและบีบอัดเสียง</span></div>
-    <div id="ps3" class="p-step"><i class="ti ti-circle si"></i><span>ถอดเทปด้วย Whisper API</span></div>
-    <div id="ps4" class="p-step"><i class="ti ti-circle si"></i><span>วิเคราะห์และสรุปตามวาระด้วย Claude</span></div>
-    <div id="ps5" class="p-step"><i class="ti ti-circle si"></i><span>สร้างรายงาน PDF / DOCX</span></div>
-    <div id="ps6" class="p-step"><i class="ti ti-circle si"></i><span>ส่งอีเมลถึงผู้เข้าร่วมประชุม</span></div>
+    <div class="progress-header">
+      <span class="progress-title" id="progress-label">กำลังเริ่มต้น...</span>
+      <span class="progress-pct" id="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+    <div id="ps1" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>ดึงไฟล์จาก Google Drive</span>
+          <span class="p-step-right" id="ps1-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps1-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="ps2" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>แปลงและบีบอัดเสียง</span>
+          <span class="p-step-right" id="ps2-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps2-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="ps3" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>ถอดเทปด้วย Whisper API</span>
+          <span class="p-step-right" id="ps3-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps3-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="ps4" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>วิเคราะห์และสรุปตามวาระด้วย Claude</span>
+          <span class="p-step-right" id="ps4-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps4-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="ps5" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>สร้างรายงาน PDF / DOCX</span>
+          <span class="p-step-right" id="ps5-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps5-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="ps6" class="p-step">
+      <i class="ti ti-circle si" aria-hidden="true"></i>
+      <div class="p-step-inner">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>ส่งอีเมลถึงผู้เข้าร่วมประชุม</span>
+          <span class="p-step-right" id="ps6-pct"></span>
+        </div>
+        <div class="p-step-bar"><div class="p-step-bar-fill" id="ps6-bar" style="width:0%"></div></div>
+      </div>
+    </div>
   </div>
 
   <!-- Result -->
@@ -518,13 +592,84 @@ function toggleChip(t) {
 }
 
 // ===================== PROCESS =====================
+// น้ำหนัก % ของแต่ละ step (รวม 100%)
+const STEP_WEIGHTS = {1:10, 2:5, 3:45, 4:25, 5:10, 6:5};
+const STEP_LABELS = {
+  1:'ดึงไฟล์จาก Google Drive',
+  2:'แปลงและบีบอัดเสียง',
+  3:'ถอดเทปด้วย Whisper API',
+  4:'วิเคราะห์ตามวาระด้วย Claude',
+  5:'สร้างรายงาน PDF / DOCX',
+  6:'ส่งอีเมลถึงผู้เข้าร่วมประชุม'
+};
+
+function calcTotalPct() {
+  let total = 0;
+  for (let n = 1; n <= 6; n++) {
+    const el = document.getElementById('ps' + n);
+    if (!el) continue;
+    if (el.classList.contains('done')) total += STEP_WEIGHTS[n];
+    else if (el.classList.contains('active')) {
+      const bar = document.getElementById('ps' + n + '-bar');
+      const barPct = bar ? parseFloat(bar.style.width) || 0 : 0;
+      total += STEP_WEIGHTS[n] * barPct / 100;
+    }
+  }
+  return Math.min(Math.round(total), 99);
+}
+
+function updateOverallProgress(activeStep) {
+  const pct = calcTotalPct();
+  const bar = document.getElementById('progress-bar');
+  const pctEl = document.getElementById('progress-pct');
+  const labelEl = document.getElementById('progress-label');
+  if (bar) bar.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (labelEl && activeStep) labelEl.textContent = STEP_LABELS[activeStep] || 'กำลังประมวลผล...';
+}
+
+let _stepTimers = {};
+
 function setStep(n, state) {
   const el = document.getElementById('ps' + n);
+  if (!el) return;
   const ic = el.querySelector('i.si');
   el.className = 'p-step ' + state;
   ic.className = state === 'active' ? 'ti ti-loader-2 si spin'
                : state === 'done'   ? 'ti ti-circle-check si'
                : 'ti ti-circle si';
+
+  const pctEl = document.getElementById('ps' + n + '-pct');
+  const barEl = document.getElementById('ps' + n + '-bar');
+
+  // หยุด timer เก่า
+  if (_stepTimers[n]) { clearInterval(_stepTimers[n]); delete _stepTimers[n]; }
+
+  if (state === 'active') {
+    if (pctEl) pctEl.textContent = '0%';
+    if (barEl) barEl.style.width = '0%';
+    // animate bar ขึ้นช้า ๆ จนถึง 90% (รอ done จะขึ้น 100%)
+    let cur = 0;
+    const maxPct = 90;
+    // Whisper (step 3) ใช้เวลานาน animate ช้ากว่า
+    const speed = n === 3 ? 800 : n === 4 ? 600 : 400;
+    _stepTimers[n] = setInterval(() => {
+      const increment = n === 3 ? 0.3 : n === 4 ? 0.5 : 1.5;
+      cur = Math.min(cur + increment, maxPct);
+      if (barEl) barEl.style.width = cur + '%';
+      if (pctEl) pctEl.textContent = Math.round(cur) + '%';
+      updateOverallProgress(n);
+    }, speed / 10);
+
+  } else if (state === 'done') {
+    if (barEl) barEl.style.width = '100%';
+    if (pctEl) pctEl.textContent = '100%';
+    setTimeout(() => updateOverallProgress(null), 100);
+
+  } else {
+    if (barEl) barEl.style.width = '0%';
+    if (pctEl) pctEl.textContent = '';
+  }
 }
 
 async function startProcessing() {
