@@ -1,20 +1,16 @@
 """
 Transcription Service
 - รองรับทั้ง OpenAI Whisper และ Groq Whisper
-- ตัดไฟล์เสียงเป็น chunk ถ้าใหญ่เกิน limit
-- รวม chunk กลับเป็น transcript เดียว
+- ตัดไฟล์เสียงเป็น chunk ถ้าใหญ่เกิน 25MB
 """
 import os
 import math
 import subprocess
 import tempfile
 
-from config import get_settings, WHISPER_MAX_MB, WHISPER_MODEL
+from config import get_settings
 
 settings = get_settings()
-
-# Groq limit อยู่ที่ 25MB เหมือนกัน
-GROQ_MAX_MB = 24
 
 
 def _get_audio_duration(filepath: str) -> float:
@@ -54,44 +50,85 @@ def _split_audio(audio_path: str, chunk_sec: int, tmp_dir: str) -> list[str]:
     return chunks
 
 
+def _parse_segments(response, offset: float = 0.0) -> list[dict]:
+    """
+    แยก segments จาก response ของทั้ง OpenAI และ Groq
+    รองรับทั้ง object และ dict
+    """
+    segments = []
+
+    # ดึง segments จาก response
+    raw_segs = None
+    if hasattr(response, "segments"):
+        raw_segs = response.segments
+    elif isinstance(response, dict):
+        raw_segs = response.get("segments", [])
+
+    if not raw_segs:
+        # ถ้าไม่มี segments ใช้ text ทั้งหมดแทน
+        text = ""
+        if hasattr(response, "text"):
+            text = response.text
+        elif isinstance(response, dict):
+            text = response.get("text", "")
+        if text:
+            segments.append({"start": offset, "end": offset + 30, "text": text.strip()})
+        return segments
+
+    for s in raw_segs:
+        try:
+            # รองรับทั้ง object (OpenAI) และ dict (Groq)
+            if isinstance(s, dict):
+                start = float(s.get("start", 0))
+                end = float(s.get("end", 0))
+                text = str(s.get("text", "")).strip()
+            else:
+                start = float(getattr(s, "start", 0))
+                end = float(getattr(s, "end", 0))
+                text = str(getattr(s, "text", "")).strip()
+
+            if text:
+                segments.append({
+                    "start": round(start + offset, 1),
+                    "end": round(end + offset, 1),
+                    "text": text,
+                })
+        except Exception:
+            continue
+
+    return segments
+
+
 def _transcribe_with_openai(audio_path: str, language: str, offset: float = 0.0) -> list[dict]:
     from openai import OpenAI
     client = OpenAI(api_key=settings.openai_api_key)
     with open(audio_path, "rb") as f:
         response = client.audio.transcriptions.create(
-            model=WHISPER_MODEL,
+            model="whisper-1",
             file=f,
             language=language if language != "th-en" else "th",
             response_format="verbose_json",
             timestamp_granularities=["segment"],
         )
-    return [
-        {"start": round(s.start + offset, 1),
-         "end": round(s.end + offset, 1),
-         "text": s.text.strip()}
-        for s in (response.segments or [])
-    ]
+    return _parse_segments(response, offset)
 
 
 def _transcribe_with_groq(audio_path: str, language: str, offset: float = 0.0) -> list[dict]:
     from groq import Groq
     client = Groq(api_key=settings.groq_api_key)
+
+    lang = language if language != "th-en" else "th"
+
     with open(audio_path, "rb") as f:
+        # Groq: ใช้ verbose_json เพื่อได้ segments
         response = client.audio.transcriptions.create(
             model="whisper-large-v3",
             file=f,
-            language=language if language != "th-en" else "th",
+            language=lang,
             response_format="verbose_json",
-            timestamp_granularities=["segment"],
         )
-    segments = []
-    for s in (response.segments or []):
-        segments.append({
-            "start": round(s.start + offset, 1),
-            "end": round(s.end + offset, 1),
-            "text": s.text.strip(),
-        })
-    return segments
+
+    return _parse_segments(response, offset)
 
 
 def transcribe_audio(
@@ -99,10 +136,7 @@ def transcribe_audio(
     language: str = "th",
     openai_api_key: str | None = None,
 ) -> dict:
-    """
-    ถอดเทปไฟล์เสียง/วิดีโอ
-    เลือก provider จาก WHISPER_PROVIDER env var (openai หรือ groq)
-    """
+    """ถอดเทปไฟล์เสียง/วิดีโอ — เลือก provider จาก WHISPER_PROVIDER env var"""
     provider = os.environ.get("WHISPER_PROVIDER", "openai").lower()
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -112,22 +146,19 @@ def transcribe_audio(
 
         duration_total = _get_audio_duration(audio_path)
         file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+        chunk_sec = int(24 * 1024 * 1024 / (64 * 1024 / 8))  # ~50 นาที
 
-        # chunk duration ~50 นาที ที่ 64kbps
-        chunk_sec = int(24 * 1024 * 1024 / (64 * 1024 / 8))
-
-        def transcribe_file(path, offset=0.0):
+        def do_transcribe(path, offset=0.0):
             if provider == "groq":
                 return _transcribe_with_groq(path, language, offset)
-            else:
-                return _transcribe_with_openai(path, language, offset)
+            return _transcribe_with_openai(path, language, offset)
 
         all_segments = []
         if file_size_mb <= 24:
-            all_segments = transcribe_file(audio_path)
+            all_segments = do_transcribe(audio_path)
         else:
             for i, chunk in enumerate(_split_audio(audio_path, chunk_sec, tmp_dir)):
-                all_segments.extend(transcribe_file(chunk, i * chunk_sec))
+                all_segments.extend(do_transcribe(chunk, i * chunk_sec))
 
         return {
             "segments": all_segments,
