@@ -650,16 +650,22 @@ function setStep(n, state) {
     if (barEl) barEl.style.width = '0%';
     // animate bar ขึ้นช้า ๆ จนถึง 90% (รอ done จะขึ้น 100%)
     let cur = 0;
-    const maxPct = 90;
-    // Whisper (step 3) ใช้เวลานาน animate ช้ากว่า
-    const speed = n === 3 ? 800 : n === 4 ? 600 : 400;
+    // เวลาที่คาดว่าแต่ละ step จะใช้ (วินาที) — Whisper นานสุด
+    const estSec = {1:5, 2:8, 3:180, 4:30, 5:10, 6:5}[n] || 30;
+    const maxPct = 95;
+    const intervalMs = 500;
+    const totalTicks = (estSec * 1000) / intervalMs;
+    let tick = 0;
     _stepTimers[n] = setInterval(() => {
-      const increment = n === 3 ? 0.3 : n === 4 ? 0.5 : 1.5;
-      cur = Math.min(cur + increment, maxPct);
-      if (barEl) barEl.style.width = cur + '%';
+      tick++;
+      // easing: เร็วตอนต้น ช้าตอนท้าย ไม่ค้าง
+      const ratio = tick / totalTicks;
+      cur = maxPct * (1 - Math.exp(-3 * ratio));
+      cur = Math.min(cur, maxPct);
+      if (barEl) barEl.style.width = cur.toFixed(1) + '%';
       if (pctEl) pctEl.textContent = Math.round(cur) + '%';
       updateOverallProgress(n);
-    }, speed / 10);
+    }, intervalMs);
 
   } else if (state === 'done') {
     if (barEl) barEl.style.width = '100%';
@@ -737,7 +743,16 @@ async function startProcessing() {
 
 function pollJobStatus(jobId, reqBody) {
   if (pollTimer) clearInterval(pollTimer);
+  let pollCount = 0;
+  const MAX_POLLS = 200; // 200 × 3s = 10 นาที
   pollTimer = setInterval(async () => {
+    pollCount++;
+    if (pollCount > MAX_POLLS) {
+      clearInterval(pollTimer);
+      document.getElementById('progress-label').textContent = 'ใช้เวลานานกว่าปกติ — กรุณารอหรือลองใหม่';
+      document.getElementById('run-btn').disabled = false;
+      return;
+    }
     try {
       const r = await fetch(`${API_BASE}/process/status/${jobId}`);
       const d = await r.json();

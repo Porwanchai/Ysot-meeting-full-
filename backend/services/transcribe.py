@@ -115,14 +115,14 @@ def _transcribe_with_openai(audio_path: str, language: str, offset: float = 0.0)
 
 def _transcribe_with_groq(audio_path: str, language: str, offset: float = 0.0) -> list[dict]:
     from groq import Groq
-    client = Groq(api_key=settings.groq_api_key)
+    # timeout=600 วินาที (10 นาที) สำหรับไฟล์ใหญ่
+    client = Groq(api_key=settings.groq_api_key, timeout=600)
 
     lang = language if language != "th-en" else "th"
 
     with open(audio_path, "rb") as f:
-        # Groq: ใช้ verbose_json เพื่อได้ segments
         response = client.audio.transcriptions.create(
-            model="whisper-large-v3",
+            model="whisper-large-v3-turbo",  # เร็วกว่า large-v3 3x ภาษาไทยยังดี
             file=f,
             language=lang,
             response_format="verbose_json",
